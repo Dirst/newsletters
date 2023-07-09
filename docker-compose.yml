@@ -1,0 +1,27 @@
+version: '3.3'
+services:
+  db:
+    image: mariadb:latest
+    environment:
+      - MYSQL_DATABASE=app
+      - MYSQL_ROOT_PASSWORD=rootroot
+      - MYSQL_USER=root
+      - MYSQL_ALLOW_EMPTY_PASSWORD=TRUE
+    volumes:
+      - ./database/my.cnf:/etc/mysql/conf.d/.my.cnf:ro
+      - ./database/tables.sql:/docker-entrypoint-initdb.d/tables.sql
+  scheduler:
+    build:
+      context: scheduler/docker
+    volumes:
+      - ./scheduler/docker/crontab:/etc/cron.d/crontab
+      - ./scheduler/code:/var/www:cached
+      - ./functions:/var/www/functions
+  sender:
+    build:
+      context: sender/docker
+    volumes:
+      - ./sender/code:/var/www:cached
+      - ./sender/docker/run.sh:/usr/local/bin/run.sh
+      - ./functions:/var/www/functions
+
