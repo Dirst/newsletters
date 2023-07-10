@@ -7,6 +7,7 @@ while (true) {
         consume_for_send();
     } catch (\Exception $exception) {
         print $exception->getMessage().PHP_EOL;
+        // Sleep a bit to decrease cpu usage on empty queue.
         sleep(5);
     }
 }

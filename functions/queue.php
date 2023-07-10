@@ -22,8 +22,13 @@ function enqueue_expiring_users(PDO $pdo): void
     $pdo->query($insertExpiringUsersSql);
 }
 
+
+/**
+ * Pull item from queue and mark it as busy.
+ */
 function dequeue_item(PDO $pdo): StdClass
 {
+    // In one transaction we get first available item.
     $pdo->beginTransaction();
     $statement = $pdo->query(
         "select * from send_queue where process_id is null order by read_time asc, id asc limit 1 for update skip locked"
@@ -37,6 +42,7 @@ function dequeue_item(PDO $pdo): StdClass
 
     $statement->closeCursor();
 
+    // And set it to processed by this thread.
     $statement = $pdo->prepare('update send_queue set process_id = :process, read_time = UNIX_TIMESTAMP(NOW()) where id = :id');
     $statement->execute([':process' => getmypid(), ':id' => $queueItem->id]);
     $pdo->commit();
@@ -44,18 +50,27 @@ function dequeue_item(PDO $pdo): StdClass
     return $queueItem;
 }
 
+/**
+ * Unlock item to be available again. Might be usefull in case of process error.
+ */
 function unlock_queue_item(PDO $pdo, int $itemId): void
 {
     $statement = $pdo->prepare('update send_queue set process_id = null where id = :id');
     $statement->execute([':id' => $itemId]);
 }
 
+/**
+ * Removes item from queue after processing.
+ */
 function ack_item_by_id(PDO $pdo, int $itemId): void
 {
     $statement = $pdo->prepare('delete from send_queue where id = :id');
     $statement->execute([':id' => $itemId]);
 }
 
+/**
+ * Get Item from queue and try to send email, then unlock it in case of an error.
+ */
 function try_email_send(PDO $pdo, StdClass $queueItem): void
 {
     try {
@@ -70,6 +85,9 @@ function try_email_send(PDO $pdo, StdClass $queueItem): void
     }
 }
 
+/**
+ * Main entrypoint to consume items, send email and acknowledge it from the queue.
+ */
 function consume_for_send(): void
 {
     $pdo = get_pdo_connection();
