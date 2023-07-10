@@ -50,10 +50,10 @@ function unlock_queue_item(PDO $pdo, int $itemId): void
     $statement->execute([':id' => $itemId]);
 }
 
-function ack_item_by_id(PDO $pdo, int $id): void
+function ack_item_by_id(PDO $pdo, int $itemId): void
 {
     $statement = $pdo->prepare('delete from send_queue where id = :id');
-    $statement->execute([':id' => $id]);
+    $statement->execute([':id' => $itemId]);
 }
 
 function try_email_send(PDO $pdo, StdClass $queueItem): void
